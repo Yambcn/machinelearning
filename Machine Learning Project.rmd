@@ -1,0 +1,70 @@
+Prediction of the methodology to develop the different types of classes for the data Weight Lifting Exercise Dataset
+========================================================
+
+## Synposis: 
+The Weight Lifting Exercise ask 6 participants to realize different exercise with sensors to analyze their performance. For each sample, they have classified the results in 5 different classes
+This prediction analysis will try to predict which methodology has been followed to define each "classe""
+
+## Understand the data
+Before the creation of the prediction model, it's important to understand the different variables. Using the function head(), we are able to see 160 variables. Just reading the names of the variables seems that the more importants will be: user_name, raw_timestamp_part_1,  raw_timestamp_part_2,total_accel_belt,total_accel_dumbbell, total_accel_forearm and total_accel_forearm.
+In the nexts figures, these variables are analyzed to consider their importance/correrlation on the definition of the variable "classe".
+
+
+```{r Preprocessing Data, echo=TRUE}
+library(ggplot2)
+library(caret)
+library(gridExtra)
+training<-read.csv("pml-training.csv");
+p1<-qplot(raw_timestamp_part_2, total_accel_belt,  colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+p2<-qplot(raw_timestamp_part_2, total_accel_arm,  colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+p3<-qplot(raw_timestamp_part_2, total_accel_dumbbell,  colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+p4<-qplot(raw_timestamp_part_2, total_accel_forearm,  colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+```
+
+## Results
+
+```{r fig.width=10, fig.height=6}
+## Results 1
+grid.arrange(p1,p2,p3,p4, ncol=2)
+```
+From this first plots, it seems that there are not relation between the 
+rawtimestamp and the classes, but exist a high relation between acceleration variables and the output classes. Specially for Classe A that appears for high total_accel_dumbbell and low total_accel_forearm.
+In next plot, accelerations are compared between them:
+
+```{r Second plot, echo=TRUE}
+q1<-qplot(total_accel_dumbbell, total_accel_forearm,  colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+q3<-qplot(total_accel_belt, total_accel_arm,  colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+q2<-qplot( total_accel_forearm, total_accel_belt, colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+q4<-qplot(total_accel_belt, total_accel_dumbbell,  colour=classe, data=training) + geom_smooth (method='lm', formula=y~x);
+```
+
+## Results
+
+```{r fig.width=10, fig.height=6}
+## Results 1
+grid.arrange(q1,q2,q3,q4, ncol=2)
+```
+
+These plots give us much more information about how to modelize our prediction model. After analyze the correlation between these variables with the output, the boosting method has been choosen to develop a machine learning model.
+To validate this method and to avoid overfitting results, a cross validation process will be  also introduced, splitting the exercice dataset file into train and test data.
+
+```{r Machine learning process, echo=TRUE}
+
+ind <- createDataPartition(training$classe, p = 0.7, list = F);
+s_train <- training[ind, ];
+s_test <- training[-ind, ];
+s_train<-s_train[,c(2:11,37:49, 60:68, 84:86, 102, 113:124,140, 151:160)] ## Chosen predictors
+s_test<-s_test[,c(2:11,37:49, 60:68, 84:86, 102, 113:124,140, 151:160)] ## Chosen predictors
+modFit= train(classe ~ ., method="gbm", verbose=FALSE, data=s_train)
+modFit
+```
+
+As we can see, the accuracy of the model is higher than 90%, what shows that the model is robust. To validate that the model is not overflipped, the model has been checked with the created test data through a Cross Validation process: 
+
+```{r Prediction results, echo=TRUE}
+pred = predict(modFit, newdata=s_test)
+table(pred, s_test$classe)
+```
+
+The results shown in the previous table, compare the predictions from our model with the real values. The results are impressive, from almost 6000 predictions less than 30 times we get a wrong prediction. 
+Therefore the accuracy has been proven to be higher than 99.5%.
